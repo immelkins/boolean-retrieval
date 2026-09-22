@@ -26,7 +26,7 @@ public class Main {
       "JUNIUS BRUTUS", "ROMAN HERALD", "TULLUS AUFIDIUS", "LIEUTENANT", "CITIZEN"
   };
 
-  boolean [][] PersonaMatrix;
+  boolean [][] personaMatrix;
 
 
   public static String Reader(File filename) throws Exception {
@@ -129,16 +129,22 @@ public class Main {
     String[] play_acts = TextSplitter(Reader(new File("pg100.txt"))); 
     boolean[][] personaMatrix = PersonaMatrix(play_acts); 
 
-    System.out.println("Number of sections: " + play_acts.length); 
-
-    for (int person = 0; person < Personas.length; person++) { 
-      System.out.println("\n" + Personas[person]);
+    HashMap<String, ArrayList<String>> personaMap = new HashMap<>();
+    for (int persona = 0; persona < Personas.length; persona++) { 
+      ArrayList<String> acts = new ArrayList<>();
       for (int act = 0; act < play_acts.length; act++) {
-        if (personaMatrix[act][person]) { 
+        if (personaMatrix[act][persona]) { 
           String[] actHeaders = play_acts[act].split("\n", 2);
-          System.out.println("  " + actHeaders[0] + " = true"); 
+          acts.add(actHeaders[0]); 
         }
       }
+      personaMap.put(Personas[persona], acts);
+    }
+
+    for (String persona : personaMap.keySet()) {
+      System.out.println("\n" + persona);
+      for (String act : personaMap.get(persona)) 
+        { System.out.println("  " + act); }
     }
   }
 }
