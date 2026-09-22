@@ -29,163 +29,116 @@ public class Main {
   boolean [][] PersonaMatrix;
 
 
-  public static String[] Reader() throws Exception {
-    Scanner scanner = new Scanner(new File("pg100.txt"),"UTF-8");
-    ArrayList<String> lines = new ArrayList<>();
+  public static String Reader(File filename) throws Exception {
+    Scanner scanner = new Scanner(filename, "UTF-8");
+    StringBuilder text = new StringBuilder();
     
     while (scanner.hasNextLine()) 
-      {lines.add(scanner.nextLine());}
+      {text.append(scanner.nextLine()).append("\n");}
     
     scanner.close();
+    return text.toString();
+  }
 
-    String[] sections = new String[Titles.length - 1];
+  public static String[] TextSplitter(String text) throws Exception {
+    // split into plays and acts
+    String[] lines = text.toString().split("\n");
+    ArrayList<String> play_acts = new ArrayList<>();
+
+    // second occurence 
     int titleCount = 0;
-    int startLine = -1;
+    int startLine = 0;
 
-    for (int i = 0; i < lines.size(); i++) {
-      if (lines.get(i).trim().equals(Titles[0])) {
+    for (int i = 0; i < lines.length; i++) {
+      if (lines[i].trim().equals(Titles[0])) {
         titleCount++;
         if (titleCount == 2) 
           { startLine = i; break; }
       }
     }
 
-    if (startLine == -1) {
-      System.out.println("Could not find: " + Titles[0]);
-      return sections;
-    }
-
-    int searchStart = startLine;
-
-    for (int i = 0; i < sections.length; i++) {
+    // split into plays
+    for (int play = 0; play < Titles.length - 1; play++) {
       int titleLine = -1;
-
-      for (int j = searchStart; j < lines.size(); j++) {
-        if (lines.get(j).trim().equals(Titles[i])) 
-          { titleLine = j; break; }
+      // find play title
+      for (int i = startLine; i < lines.length; i++) {
+        if (lines[i].trim().equals(Titles[play])) 
+          { titleLine = i; break; }
       }
 
       if (titleLine == -1) 
-        { System.out.println("Could not find: " + Titles[i]); continue; }
+        { System.out.println("Could not find: " + Titles[play]); continue; }
       
-      int endLine = lines.size();
+      // start of next play
+      int endLine = lines.length;
 
-      for (int j = titleLine + 1; j < lines.size(); j++) {
-        if (lines.get(j).trim().equals(Titles[i + 1])) 
-          { endLine = j; break; }
+      for (int i = titleLine + 1; i < lines.length; i++) {
+        if (lines[i].trim().equals(Titles[play + 1])) 
+          { endLine = i; break; }
       }
 
-      StringBuilder section = new StringBuilder();
-
-      for (int j = titleLine; j < endLine; j++) 
-        { section.append(lines.get(j)).append("\n"); }
-
-      sections[i] = section.toString();
-      searchStart = titleLine + 1;
-    }
-
-    return sections;
-}
-  
-  public static String[][] Acts(String[] sections) {
-    String[][] acts = new String[sections.length][];
-    for (int i = 0; i < sections.length; i++) {
-
-      String[] lines = sections[i].split("\n");
-      ArrayList<String> actList = new ArrayList<>();
-
-      int personaLine = -1;
-      int startLine = -1;
-
-      for (int j = 0; j < lines.length; j++) {
-        if (lines[j].trim().equals("Dramatis Personæ")) 
-          { personaLine = j; break; }
+      // find the first act within the play
+      int startAct = -1;
+      for (int i = titleLine; i < endLine; i++) { 
+        if (lines[i].trim().matches("ACT [IVX]+")) 
+          if (lines[i+2].trim().matches("SCENE [IVX]+.*")) 
+            { startAct = i; break; }
       }
 
-      if (personaLine == -1) 
-        { acts[i] = new String[0]; continue; }
+      if (startAct == -1) 
+        { System.out.println("Could not find ACT in: " + Titles[play]); continue; }
 
-      for (int j = personaLine + 1; j < lines.length; j++) {
-        if (lines[j].trim().equals("ACT I")) 
-          { startLine = j; break; }
-      }
-
-      if (startLine == -1) 
-        { acts[i] = new String[0]; continue; }
-
-      for (int j = startLine + 1; j < lines.length; j++) {
-
-        if (lines[j].trim().matches("ACT [IVX]+")) {
+      // other acts within the play
+      for (int i = startAct + 1; i < endLine; i++) {
+        if (lines[i].trim().matches("ACT [IVX]+")) {
           StringBuilder act = new StringBuilder();
-          for (int k = startLine; k < j; k++) 
-            { act.append(lines[k]).append("\n"); }
+          act.append(Titles[play]).append(" - " + lines[startAct].trim() + "\n");
 
-          actList.add(act.toString());
-          startLine = j;
+          for (int j = startAct + 1; j < i; j++) 
+            { act.append(lines[j]).append("\n"); }
+          play_acts.add(act.toString());
+          startAct = i;
         }
       }
 
       StringBuilder act = new StringBuilder();
+      act.append(Titles[play]).append(" - " + lines[startAct].trim() + "\n");
 
-      for (int j = startLine; j < lines.length; j++) 
-        { act.append(lines[j]).append("\n"); }
-
-      actList.add(act.toString());
-      acts[i] = actList.toArray(new String[0]);
+      for (int i = startAct + 1; i < endLine; i++) 
+        { act.append(lines[i]).append("\n"); }
+      play_acts.add(act.toString());
+      startLine = titleLine + 1;
     }
-    return acts;
+    return play_acts.toArray(new String[0]);
   }
+  
+  public static boolean[][] PersonaMatrix(String[] play_acts) {
+    boolean[][] personaMatrix = new boolean[play_acts.length][Personas.length];
 
-  public static boolean[][] PersonaMatrix(String[][] acts) {
-    int totalActs = 0;
-    for (int i = 0; i < acts.length; i++) 
-      { totalActs += acts[i].length; }
-
-    boolean[][] personaMatrix = new boolean[totalActs][Personas.length];
-    int row = 0;
-
-    for (int play = 0; play < acts.length; play++) {
-      for (int act = 0; act < acts[play].length; act++) {
-        String actText = acts[play][act];
-
-        for (int persona = 0; persona < Personas.length; persona++) {
-          if (actText.contains(Personas[persona])) 
-            { personaMatrix[row][persona] = true; }
-          else 
-            { personaMatrix[row][persona] = false; }
-        }
-        row++;
+    for (int act = 0; act < play_acts.length; act++) {
+      for (int persona = 0; persona < Personas.length; persona++) {
+        if (play_acts[act].contains(Personas[persona])) 
+          { personaMatrix[act][persona] = true; }
+        else 
+          { personaMatrix[act][persona] = false; }
       }
     }
     return personaMatrix;
   }
-public static void main(String[] args) throws Exception { 
-    String[] sections = Reader(); 
-    String[][] acts = Acts(sections); 
+  public static void main(String[] args) throws Exception { 
+    String[] play_acts = TextSplitter(Reader(new File("pg100.txt"))); 
+    boolean[][] personaMatrix = PersonaMatrix(play_acts); 
 
-    boolean[][] personaMatrix = PersonaMatrix(acts); 
+    System.out.println("Number of sections: " + play_acts.length); 
 
-    System.out.println("Number of sections: " + sections.length); 
-
-    for (int i = 0; i < sections.length; i++) { 
-        if (sections[i] != null)
-            System.out.println(i + " - " + Titles[i] + 
-                " (" + sections[i].length() + " characters)"); 
-        else
-            System.out.println(i + " - " + Titles[i] + " = NULL"); 
-    }
-
-    int row = 0;
-    for (int play = 0; play < acts.length; play++) {
-        for (int act = 0; act < acts[play].length; act++) {
-            System.out.println("\n" + Titles[play] + " - ACT " + (act + 1));
-            for (int persona = 0; persona < Personas.length; persona++) {
-                if (personaMatrix[row][persona]) {
-                    System.out.println("  " + Personas[persona] + " = true");
-                }
-            }
-            row++;
+    for (int person = 0; person < Personas.length; person++) { 
+      System.out.println("\n" + Personas[person]);
+      for (int act = 0; act < play_acts.length; act++) {
+        if (personaMatrix[act][person]) { 
+          String[] actHeaders = play_acts[act].split("\n", 2);
+          System.out.println("  " + actHeaders[0] + " = true"); 
         }
+      }
     }
-}
+  }
 }
