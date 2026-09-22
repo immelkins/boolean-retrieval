@@ -26,8 +26,8 @@ public class Main {
       "JUNIUS BRUTUS", "ROMAN HERALD", "TULLUS AUFIDIUS", "LIEUTENANT", "CITIZEN"
   };
 
-  boolean [][] personaMatrix;
-
+  static boolean [][] personaMatrix;
+  static HashMap<String, ArrayList<String>> personaMap = new HashMap<>();
 
   public static String Reader(File filename) throws Exception {
     Scanner scanner = new Scanner(filename, "UTF-8");
@@ -41,37 +41,26 @@ public class Main {
   }
 
   public static String[] TextSplitter(String text) throws Exception {
-    // split into plays and acts
-    String[] lines = text.toString().split("\n");
-    ArrayList<String> play_acts = new ArrayList<>();
-
-    // second occurence 
-    int titleCount = 0;
-    int startLine = 0;
-
-    for (int i = 0; i < lines.length; i++) {
-      if (lines[i].trim().equals(Titles[0])) {
-        titleCount++;
-        if (titleCount == 2) 
-          { startLine = i; break; }
-      }
-    }
+    String[] lines = text.split("\n");
+    ArrayList<String> playacts = new ArrayList<>();
 
     // split into plays
     for (int play = 0; play < Titles.length - 1; play++) {
-      int titleLine = -1;
-      // find play title
-      for (int i = startLine; i < lines.length; i++) {
-        if (lines[i].trim().equals(Titles[play])) 
-          { titleLine = i; break; }
-      }
 
-      if (titleLine == -1) 
-        { System.out.println("Could not find: " + Titles[play]); continue; }
+      int titleCount = 0;
+      int titleLine = 0;
+
+      // second occurence of each title
+      for (int i = 0; i < lines.length; i++) {
+        if (lines[i].trim().equals(Titles[play])) {
+          titleCount++;
+          if (titleCount == 2) 
+            { titleLine = i; break; }
+        }
+      }
       
       // start of next play
       int endLine = lines.length;
-
       for (int i = titleLine + 1; i < lines.length; i++) {
         if (lines[i].trim().equals(Titles[play + 1])) 
           { endLine = i; break; }
@@ -85,10 +74,7 @@ public class Main {
             { startAct = i; break; }
       }
 
-      if (startAct == -1) 
-        { System.out.println("Could not find ACT in: " + Titles[play]); continue; }
-
-      // other acts within the play
+      // other acts in the play
       for (int i = startAct + 1; i < endLine; i++) {
         if (lines[i].trim().matches("ACT [IVX]+")) {
           StringBuilder act = new StringBuilder();
@@ -96,7 +82,7 @@ public class Main {
 
           for (int j = startAct + 1; j < i; j++) 
             { act.append(lines[j]).append("\n"); }
-          play_acts.add(act.toString());
+          playacts.add(act.toString());
           startAct = i;
         }
       }
@@ -106,18 +92,17 @@ public class Main {
 
       for (int i = startAct + 1; i < endLine; i++) 
         { act.append(lines[i]).append("\n"); }
-      play_acts.add(act.toString());
-      startLine = titleLine + 1;
+      playacts.add(act.toString());
     }
-    return play_acts.toArray(new String[0]);
+    return playacts.toArray(new String[0]);
   }
   
-  public static boolean[][] PersonaMatrix(String[] play_acts) {
-    boolean[][] personaMatrix = new boolean[play_acts.length][Personas.length];
+  public static boolean[][] PersonaMatrix(String[] playacts) {
+    boolean[][] personaMatrix = new boolean[playacts.length][Personas.length];
 
-    for (int act = 0; act < play_acts.length; act++) {
+    for (int act = 0; act < playacts.length; act++) {
       for (int persona = 0; persona < Personas.length; persona++) {
-        if (play_acts[act].contains(Personas[persona])) 
+        if (playacts[act].contains(Personas[persona])) 
           { personaMatrix[act][persona] = true; }
         else 
           { personaMatrix[act][persona] = false; }
@@ -125,16 +110,49 @@ public class Main {
     }
     return personaMatrix;
   }
-  public static void main(String[] args) throws Exception { 
-    String[] play_acts = TextSplitter(Reader(new File("pg100.txt"))); 
-    boolean[][] personaMatrix = PersonaMatrix(play_acts); 
 
-    HashMap<String, ArrayList<String>> personaMap = new HashMap<>();
+  public static void PersonaSearch(String inputPersona) {
+    String persona = inputPersona.toUpperCase();
+    ArrayList<String> acts1 = personaMap.get(persona);
+    System.out.println("\nActs that have " + persona + ": ");
+    for (String act : acts1) 
+      { System.out.println(act); }
+  }
+
+  public static void PersonaIncludedSearch(String inputPersona1, String inputPersona2) {
+    String persona1 = inputPersona1.toUpperCase();
+    String persona2 = inputPersona2.toUpperCase();
+    ArrayList<String> acts1 = personaMap.get(persona1);
+    ArrayList<String> acts2 = personaMap.get(persona2);
+    System.out.println("\nActs that have both " + persona1 + " & " + persona2 + ": ");
+    for (String act : acts1) {
+      if (acts2.contains(act)) 
+        { System.out.println(act); }
+    }
+  }
+
+  public static void PersonaExcludedSearch(String inputPersona1, String inputPersona2) {
+    String persona1 = inputPersona1.toUpperCase();
+    String persona2 = inputPersona2.toUpperCase();
+    ArrayList<String> acts1 = personaMap.get(persona1);
+    ArrayList<String> acts2 = personaMap.get(persona2);
+    System.out.println("\nActs that have " + persona1 + " & NOT " + persona2 + ": ");
+
+    for (String act : acts1) {
+      if (!(acts2.contains(act))) 
+        { System.out.println(act); }
+    }
+  }
+
+  public static void main(String[] args) throws Exception { 
+    String[] playacts = TextSplitter(Reader(new File("pg100.txt"))); 
+    boolean[][] personaMatrix = PersonaMatrix(playacts); 
+
     for (int persona = 0; persona < Personas.length; persona++) { 
       ArrayList<String> acts = new ArrayList<>();
-      for (int act = 0; act < play_acts.length; act++) {
+      for (int act = 0; act < playacts.length; act++) {
         if (personaMatrix[act][persona]) { 
-          String[] actHeaders = play_acts[act].split("\n", 2);
+          String[] actHeaders = playacts[act].split("\n", 2);
           acts.add(actHeaders[0]); 
         }
       }
@@ -146,5 +164,9 @@ public class Main {
       for (String act : personaMap.get(persona)) 
         { System.out.println("  " + act); }
     }
+
+    PersonaSearch("citizen");
+    PersonaIncludedSearch("citizen", "orlando");
+    PersonaExcludedSearch("citizen", "orlando");
   }
 }
