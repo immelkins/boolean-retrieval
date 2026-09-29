@@ -165,8 +165,15 @@ public class Main {
         { System.out.println("  " + act); }
     }
 
-    PersonaSearch("citizen");
-    PersonaIncludedSearch("citizen", "orlando");
-    PersonaExcludedSearch("citizen", "orlando");
+    Scanner scanner = new Scanner(System.in);
+    System.out.print("\nEnter a persona to search for: ");
+    String inputPersona1 = scanner.nextLine();
+    System.out.print("Enter another persona to search for: ");
+    String inputPersona2 = scanner.nextLine();
+    scanner.close();
+
+    PersonaSearch(inputPersona1);
+    PersonaIncludedSearch(inputPersona1, inputPersona2);
+    PersonaExcludedSearch(inputPersona1, inputPersona2);
   }
 }
